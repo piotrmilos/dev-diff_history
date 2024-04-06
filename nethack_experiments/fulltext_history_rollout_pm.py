@@ -134,8 +134,7 @@ def history_rollout(
     observation_token_id = tokenizer.encode_plus(observation_token)["input_ids"][-1]
 
 
-    def _query_model(
-        prompt, unroll_length=1, stop_token_id=observation_token_id
+    def _query_model(tokens, unroll_length=1, stop_token_id=observation_token_id
     ):
         stopping_criteria = UnrollLengthCriteria(
             unroll_length=unroll_length,
@@ -143,29 +142,38 @@ def history_rollout(
             num_return_sequences=1,
         )
 
-        # print in blue
-        print("\033[94m <>" + prompt + "</>\033[0m")
-        tokenized_prompt = tokenizer(
-            prompt, padding="longest", return_tensors="pt", add_special_tokens=False
-        )
+        tokenized_prompt2 = torch.tensor(tokens, dtype=torch.int64).unsqueeze(0)
+        attention_mask = torch.ones_like(tokenized_prompt2)
+
 
         if torch.cuda.is_available():
-            tokenized_prompt = {k: v.cuda() for (k, v) in tokenized_prompt.items()}
+            tokenized_prompt2 = tokenized_prompt2.cuda()
+            attention_mask = attention_mask.cuda()
 
         tries = 0
         while 1:
             tries += 1
-            out = model.generate(
-                **tokenized_prompt,
+            out2 = model.generate(
+                tokenized_prompt2,
+                attention_mask=attention_mask,
                 generation_config=action_generation_config,
                 stopping_criteria=[stopping_criteria],
             )
-            decoded = tokenizer.batch_decode(out)
-            suffix = decoded[0][prompt.rfind(ACTION_TOKEN) :]
+            # decoded = tokenizer.batch_decode(out)
+            out_action = out2[0][len(tokens):]
+            suffix = tokenizer.decode(out_action)
+
+            # todo: for the moment we make it consistent with the previous version
+            # in order for the further code to work properly
+            suffix = "<|action|>" + suffix.strip()
             if suffix.count(ACTION_TOKEN) > 0:
                 break
             if tries > max_tries:
-                return ["esc"], ["none"], decoded[0]
+                return ["esc"], ["none"]
+
+
+        # will probably not work for unroll_length > 1
+        assert unroll_length == 1, "unroll_length > 1 not supported yet"
 
         actions = []
         pred_obs = []
@@ -185,7 +193,7 @@ def history_rollout(
             pred_obs += [obs]
             suffix = suffix[suffix.find(ACTION_TOKEN) :]
 
-        return [actions[-1]], [pred_obs[-1]], decoded[0]
+        return [actions[-1]], [pred_obs[-1]]
 
     done = False
 
@@ -248,7 +256,7 @@ def history_rollout(
         ctx += "\n%s" % (interleaving_token)
 
         query_tokens = trajectory_tokenizer.return_tokenized()
-        actions, i_obs, decoded_output = _query_model(ctx, unroll_length=1)
+        actions, i_obs = _query_model(tokens=query_tokens, unroll_length=1)
 
         imagined_obs += [i_obs]
 
