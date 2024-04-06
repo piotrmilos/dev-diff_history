@@ -86,6 +86,7 @@ class TrajectoryTokenizer:
         assert self._token_buffer[-1] == self.nethack_obs_end_token_id
         return self._token_buffer[-self._max_ctx_tokens:]
 
+
 def history_rollout(
     model,
     tokenizer,
