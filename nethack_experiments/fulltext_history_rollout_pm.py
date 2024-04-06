@@ -27,15 +27,13 @@ OBSERVATION_TOKEN = special_tokens_interaction_history["observation"]
 
 
 class TrajectoryTokenizer:
-    def __init__(self, tokenizer, nethack_anchor_every=1,
-                 nethack_obs_start_token_id=30001,
-                 nethack_obs_end_token_id=30002,
-                 nethack_obs_start_diff_token_id=30004, ):
-        self.nethack_obs_start_token_id = nethack_obs_start_token_id
-        self.nethack_obs_end_token_id = nethack_obs_end_token_id
-        self.nethack_obs_start_diff_token_id = nethack_obs_start_diff_token_id
-        self.nethack_anchor_every = nethack_anchor_every
+    nethack_obs_start_token_id = 30001
+    nethack_obs_end_token_id = 30002
+    nethack_obs_start_diff_token_id = 30004
 
+    def __init__(self, tokenizer, nethack_anchor_every=1, max_ctx_tokens=8000):
+        self.nethack_anchor_every = nethack_anchor_every
+        self._max_ctx_tokens = max_ctx_tokens
         self.tokenizer = tokenizer
 
         self._observations = None
@@ -86,17 +84,16 @@ class TrajectoryTokenizer:
 
     def return_tokenized(self):
         assert self._token_buffer[-1] == self.nethack_obs_end_token_id
-        return self._token_buffer
+        return self._token_buffer[-self._max_ctx_tokens:]
 
 def history_rollout(
     model,
     tokenizer,
     action_generation_config,
     args,
-    observation_token=OBSERVATION_TOKEN,
     max_tries=1,
     history=2,
-    max_ctx_tokens=4000,
+    max_ctx_tokens=8000,
     history_max=False,
     start_seed=10000,
 ):
@@ -128,13 +125,8 @@ def history_rollout(
     env = NLELMWrapper(
         env, observation=True, random_template=False, include_interleave_in_prompt=False
     )
-    # env.env.seed(game_seed, game_seed) # pm change_here
-
-    interleaving_token = env.interleaving_token
-    observation_token_id = tokenizer.encode_plus(observation_token)["input_ids"][-1]
-
-
-    def _query_model(tokens, unroll_length=1, stop_token_id=observation_token_id
+    #todo: this function should be refactored to be external
+    def _query_model(tokens, unroll_length=1, stop_token_id=TrajectoryTokenizer.nethack_obs_start_token_id
     ):
         # todo: I do not understand this part. In particular it feels
         # strange that unroll_length is fixed to 1
@@ -160,7 +152,6 @@ def history_rollout(
                 generation_config=action_generation_config,
                 stopping_criteria=[stopping_criteria],
             )
-            # decoded = tokenizer.batch_decode(out)
             out_action = out2[0][len(tokens):]
             suffix = tokenizer.decode(out_action)
 
@@ -171,7 +162,6 @@ def history_rollout(
                 break
             if tries > max_tries:
                 return ["esc"], ["none"]
-
 
         # will probably not work for unroll_length > 1
         assert unroll_length == 1, "unroll_length > 1 not supported yet"
@@ -198,7 +188,7 @@ def history_rollout(
 
     done = False
     obs = env.reset()
-    trajectory_tokenizer = TrajectoryTokenizer(tokenizer, nethack_anchor_every=1)
+    trajectory_tokenizer = TrajectoryTokenizer(tokenizer, nethack_anchor_every=1, max_ctx_tokens=max_ctx_tokens)
     trajectory_tokenizer.append_observation(obs["prompt"])
 
     imagined_obs = []
