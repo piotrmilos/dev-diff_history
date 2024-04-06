@@ -1,36 +1,19 @@
 import argparse
 import json
-import jsonlines
-import numpy as np
 import os
-import pandas as pd
-import pdb
-import time
 import torch
-import tqdm
-import difflib
 import functools
-import gym
-import pathlib
-import sys
 
-from accelerate import Accelerator
-from datasets import load_dataset
 from nle.env import tasks
 from transformers import GenerationConfig
-from transformers import StoppingCriteria
 from copy import deepcopy
 
 
-base_path = str(pathlib.Path().resolve())
-PROJECT_PATH = os.path.join(base_path[: base_path.find("diff_history")], "diff_history")
-sys.path.insert(0, PROJECT_PATH)
 from utils import (
     load_hf_lm_and_tokenizer,
     pretty_print_ttyrec,
     set_seed_everywhere,
     UnrollLengthCriteria,
-    get_diff,
 )
 from wrappers import NLELMWrapper
 

@@ -1,21 +1,13 @@
-import asyncio
-import csv
 import difflib
-import gym
-import json
 import logging
 import numpy as np
 import os
 import pathlib
-import pdb
 import random
 import sys
-import time
 import torch
-import tqdm
 
 from nle.nethack.actions import ACTIONS
-from transformers import GenerationConfig
 from transformers import StoppingCriteria
 
 base_path = str(pathlib.Path().resolve())
@@ -29,9 +21,6 @@ import nle
 env = gym.make("NetHackScore-v0")
 env.reset()  # each reset generates a new dungeon
 # ==== end of the part needed for MacOs
-
-from nle_language_wrapper import NLELanguageWrapper
-from nle_language_wrapper.nle_language_obsv import NLELanguageObsv
 
 
 NH_ACTION_STR_TO_IDX = {str(ACTIONS[i]): i for i in range(len(ACTIONS))}

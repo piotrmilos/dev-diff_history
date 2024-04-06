@@ -1,25 +1,10 @@
-import argparse
-# import cv2
 import gym
-import json
-import jsonlines
 import numpy as np
 import os
-import pandas as pd
-import pdb
-import time
-import torch
-import tqdm
-
-from accelerate import Accelerator
-from datasets import load_dataset
 from gym import Wrapper
 from gym import spaces
 from nle.env import NLE
-from nle.env import tasks
 from nle.nethack.actions import ACTIONS
-from transformers import GenerationConfig
-from transformers import StoppingCriteria
 
 import pathlib
 import sys
@@ -27,10 +12,8 @@ import sys
 
 base_path = str(pathlib.Path().resolve())
 PROJECT_PATH = os.path.join(base_path[: base_path.find("diff_history")], "diff_history")
-sys.path.insert(0, PROJECT_PATH)
+
 from instruction_encode_templates import *
-from utils import load_hf_lm_and_tokenizer
-from utils import set_seed_everywhere
 from action_textmap import (
     nle_action_textmap,
     nle_comp_preqs,
@@ -38,16 +21,11 @@ from action_textmap import (
     special_tokens_interaction_history,
 )
 
-sys.path.insert(0, os.path.join(PROJECT_PATH, "external/nle-language-wrapper"))
 from PIL import Image
 from PIL import ImageDraw
 from PIL import ImageFont
 from nle import nethack
-from nle_language_wrapper import NLELanguageWrapper
 from nle_language_wrapper.nle_language_obsv import NLELanguageObsv
-# from numba import njit
-
-# import render_utils
 
 SMALL_FONT_PATH = os.path.abspath(
     os.path.join(
