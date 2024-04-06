@@ -47,7 +47,7 @@ class TrajectoryTokenizer:
 
     def append_observation(self, observation):
         obs = observation.strip()
-        print("\033[92m <>" + obs + "</>\033[0m")
+        # print("\033[92m <>" + obs + "</>\033[0m")
         i = len(self._observations)
         self._observations.append(obs)
         assert len(self._observations) == len(self._actions) + 1
@@ -145,7 +145,6 @@ def history_rollout(
         tokenized_prompt2 = torch.tensor(tokens, dtype=torch.int64).unsqueeze(0)
         attention_mask = torch.ones_like(tokenized_prompt2)
 
-
         if torch.cuda.is_available():
             tokenized_prompt2 = tokenized_prompt2.cuda()
             attention_mask = attention_mask.cuda()
@@ -213,48 +212,6 @@ def history_rollout(
     all_obs = []
     all_actions = []
     while not done:
-        if history_max:
-            passed = False
-            candidate_history = min(history, len(all_actions))
-
-            while not passed and candidate_history >= 0:
-                query = prompt_history[-(candidate_history + 1)].strip()
-                ctx = query.strip() + "\n"
-                for i in range(-candidate_history, 0):
-                    ctx += "\n%s%s" % (interleaving_token, all_actions[i])
-                    ctx += "\n%s\n%s" % (
-                        observation_token,
-                        prompt_history[i][
-                            prompt_history[i].find("statistics[") :
-                        ].rstrip("\n"),
-                    )
-                tokenized_prompt = tokenizer(
-                    ctx + "\n%s" % (interleaving_token),
-                    padding="longest",
-                    return_tensors="pt",
-                    add_special_tokens=False,
-                )
-                if tokenized_prompt["input_ids"].shape[1] < max_ctx_tokens:
-                    passed = True
-                else:
-                    candidate_history -= 1
-
-        else:
-            candidate_history = min(history, len(all_actions))
-            query = prompt_history[-(candidate_history + 1)].strip()
-            ctx = query.strip() + "\n"
-
-            for i in range(-candidate_history, 0):
-                ctx += "\n%s%s" % (interleaving_token, all_actions[i])
-                ctx += "\n%s\n%s" % (
-                    observation_token,
-                    prompt_history[i][prompt_history[i].find("statistics[") :].rstrip(
-                        "\n"
-                    ),
-                )
-
-        ctx += "\n%s" % (interleaving_token)
-
         query_tokens = trajectory_tokenizer.return_tokenized()
         actions, i_obs = _query_model(tokens=query_tokens, unroll_length=1)
 
@@ -284,7 +241,6 @@ def history_rollout(
         if max(len(all_actions) - history, 0) != 0:
             ctx_idx += 1
 
-        query = prompt_history[ctx_idx].strip()
 
     obs_mtdata = {
         "gt": gt_obs,
