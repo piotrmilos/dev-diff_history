@@ -136,6 +136,8 @@ def history_rollout(
 
     def _query_model(tokens, unroll_length=1, stop_token_id=observation_token_id
     ):
+        # todo: I do not understand this part. In particular it feels
+        # strange that unroll_length is fixed to 1
         stopping_criteria = UnrollLengthCriteria(
             unroll_length=unroll_length,
             stop_token_id=stop_token_id,
@@ -195,17 +197,9 @@ def history_rollout(
         return [actions[-1]], [pred_obs[-1]]
 
     done = False
-
     obs = env.reset()
-
     trajectory_tokenizer = TrajectoryTokenizer(tokenizer, nethack_anchor_every=1)
-
-    query = obs["prompt"]
-    ctx = query[:].strip() + "\n"
-    ctx_idx = 0
-    prompt_history = [obs["prompt"]]
-
-    trajectory_tokenizer.append_observation(ctx)
+    trajectory_tokenizer.append_observation(obs["prompt"])
 
     imagined_obs = []
     gt_obs = []
@@ -225,7 +219,6 @@ def history_rollout(
 
                 gt_obs += [deepcopy(obs["prompt"])]
                 all_actions += [action]
-                prompt_history += [obs["prompt"]]
 
                 sobs = pretty_print_ttyrec(obs)
                 all_obs += [sobs]
@@ -237,9 +230,6 @@ def history_rollout(
                     env.env._quit_game(env.last_observation, done)
                 except Exception as e:
                     print("Exception here 2:", e)
-
-        if max(len(all_actions) - history, 0) != 0:
-            ctx_idx += 1
 
 
     obs_mtdata = {
