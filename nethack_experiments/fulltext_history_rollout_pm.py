@@ -25,7 +25,6 @@ from copy import deepcopy
 base_path = str(pathlib.Path().resolve())
 PROJECT_PATH = os.path.join(base_path[: base_path.find("diff_history")], "diff_history")
 sys.path.insert(0, PROJECT_PATH)
-from action_textmap import all_nle_action_map, special_tokens_interaction_history
 from utils import (
     load_hf_lm_and_tokenizer,
     pretty_print_ttyrec,
@@ -34,6 +33,11 @@ from utils import (
     get_diff,
 )
 from wrappers import NLELMWrapper
+
+special_tokens_interaction_history = {
+    "action": "<|action|>",
+    "observation": "<|observation|>",
+}
 
 ACTION_TOKEN = special_tokens_interaction_history["action"]
 OBSERVATION_TOKEN = special_tokens_interaction_history["observation"]
@@ -75,10 +79,11 @@ def history_rollout(
         )
     )
 
+
     env = NLELMWrapper(
         env, observation=True, random_template=False, include_interleave_in_prompt=False
     )
-    env.env.seed(game_seed, game_seed)
+    # env.env.seed(game_seed, game_seed) # pm change_here
 
     interleaving_token = env.interleaving_token
     interleaving_token_id = tokenizer.encode_plus(env.interleaving_token)["input_ids"][
@@ -113,7 +118,9 @@ def history_rollout(
         tokenized_prompt = tokenizer(
             prompt, padding="longest", return_tensors="pt", add_special_tokens=False
         )
-        tokenized_prompt = {k: v.cuda() for (k, v) in tokenized_prompt.items()}
+
+        if torch.cuda.is_available(): # pm change if cuda present
+            tokenized_prompt = {k: v.cuda() for (k, v) in tokenized_prompt.items()}
         tries = 0
         while 1:
             tries += 1
@@ -338,11 +345,18 @@ def main():
     # set seed everywhere
     set_seed_everywhere(args.seed)
 
+    # is on MacOS, stay on cpu (some type compatibility issues)
+    if torch.backends.mps.is_available():
+        device = 'cpu'
+    else:
+        device = 'auto'
+
     model, tokenizer = load_hf_lm_and_tokenizer(
         model_name_or_path=args.model_name_or_path,
         use_fast_tokenizer=(
             "bert" in args.model_name_or_path or "LED" in args.model_name_or_path
         ),
+        device_map=device
     )
 
     if args.beam_decoding:

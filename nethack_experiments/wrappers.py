@@ -1,5 +1,5 @@
 import argparse
-import cv2
+# import cv2
 import gym
 import json
 import jsonlines
@@ -45,9 +45,9 @@ from PIL import ImageFont
 from nle import nethack
 from nle_language_wrapper import NLELanguageWrapper
 from nle_language_wrapper.nle_language_obsv import NLELanguageObsv
-from numba import njit
+# from numba import njit
 
-import render_utils
+# import render_utils
 
 SMALL_FONT_PATH = os.path.abspath(
     os.path.join(
@@ -114,7 +114,7 @@ class NLELMWrapper(Wrapper):
         self.random_template = random_template
 
         self._action_map = {
-            nle_action_map[str(action)]: i for i, action in enumerate(ACTIONS)
+            nle_action_textmap[str(action)]: i for i, action in enumerate(ACTIONS)  # pm change_here
         }
         self._reverse_action_map = {v: k for (k, v) in self._action_map.items()}
         self._nle_language = NLELanguageObsv()
@@ -286,7 +286,7 @@ class NLELMWrapper(Wrapper):
         return nle_obsv, reward, done, info
 
 
-@njit
+# @njit
 def _tile_characters_to_image(
     out_image,
     chars,

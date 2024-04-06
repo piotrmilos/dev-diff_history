@@ -21,6 +21,15 @@ from transformers import StoppingCriteria
 base_path = str(pathlib.Path().resolve())
 PROJECT_PATH = os.path.join(base_path[: base_path.find("diff_history")], "diff_history")
 sys.path.insert(0, os.path.join(PROJECT_PATH, "external/nle-language-wrapper"))
+
+import gym
+
+# ==== this part is needed to make libraries import work on MacOs
+import nle
+env = gym.make("NetHackScore-v0")
+env.reset()  # each reset generates a new dungeon
+# ==== end of the part needed for MacOs
+
 from nle_language_wrapper import NLELanguageWrapper
 from nle_language_wrapper.nle_language_obsv import NLELanguageObsv
 
@@ -165,6 +174,7 @@ def load_hf_lm_and_tokenizer(
 
     model.eval()
 
-    model = model.cuda()
+    if torch.cuda.is_available():
+        model = model.cuda()
 
     return model, tokenizer
