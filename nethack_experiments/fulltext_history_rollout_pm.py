@@ -69,28 +69,11 @@ def history_rollout(
     # env.env.seed(game_seed, game_seed) # pm change_here
 
     interleaving_token = env.interleaving_token
-    interleaving_token_id = tokenizer.encode_plus(env.interleaving_token)["input_ids"][
-        -1
-    ]
     observation_token_id = tokenizer.encode_plus(observation_token)["input_ids"][-1]
 
-    ## unpack candidate action tokens
-    action_token_seqs = [
-        tokenizer.encode_plus(env.interleaving_token + k)["input_ids"]
-        for k in env.action_map
-    ]
-    candidate_token_ids = []
-    for token_seq in action_token_seqs:
-        for token in token_seq:
-            if not token in candidate_token_ids:
-                candidate_token_ids += [token]
-    candidate_token_ids = list(set(candidate_token_ids))
-    candidate_token_ids.sort()
-    valid_actions = [k for k in env.action_map]
-    valid_action_tokens = [a[2:] for a in action_token_seqs]
 
     def _query_model(
-        prompt, unroll_length=1, stop_token_id=observation_token_id, max_tokens=4096
+        prompt, unroll_length=1, stop_token_id=observation_token_id
     ):
         stopping_criteria = UnrollLengthCriteria(
             unroll_length=unroll_length,
@@ -102,8 +85,9 @@ def history_rollout(
             prompt, padding="longest", return_tensors="pt", add_special_tokens=False
         )
 
-        if torch.cuda.is_available(): # pm change if cuda present
+        if torch.cuda.is_available():
             tokenized_prompt = {k: v.cuda() for (k, v) in tokenized_prompt.items()}
+
         tries = 0
         while 1:
             tries += 1
@@ -140,7 +124,6 @@ def history_rollout(
         return [actions[-1]], [pred_obs[-1]], decoded[0]
 
     done = False
-    counter = 0
 
     obs = env.reset()
 
@@ -148,9 +131,6 @@ def history_rollout(
     ctx = query[:].strip() + "\n"
     ctx_idx = 0
     prompt_history = [obs["prompt"]]
-
-    actions_since_reset = []
-    steps_since_menu_open = 0
 
     imagined_obs = []
     gt_obs = []
