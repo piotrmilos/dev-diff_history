@@ -1,3 +1,9 @@
+# Disclaimer
+This is a PM copy for developing evals only. Should not be used unless you really know what you are doing.
+
+You should run nethack_experiments/fulltext_history_rollout_pm.py --model_name_or_path=/tmp/convert_chkpt_mp/BIS-466/BIS-466/streaming_params_3000 --observation_save_dir=/tmp 
+
+You can download checkpoints from gs://focused-llama/bison-pl/BIS-466/pytorch
 
 # `diff` History for Neural Language Agents
 
