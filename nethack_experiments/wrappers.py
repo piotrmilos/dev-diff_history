@@ -83,9 +83,8 @@ class NLELMWrapper(Wrapper):
                 "text_cursor": spaces.Space(),
             }
         )
-        self._instruction = (
-            "You are an agent playing NetHack. Predict the next keypresses."
-        )
+        self._instruction = ""
+
         self._interleaving_token = special_tokens_interaction_history["action"]
         self._final_completion_prefix = None
         self._hist_preq = nle_obs_preqs["prev_action_seq"]

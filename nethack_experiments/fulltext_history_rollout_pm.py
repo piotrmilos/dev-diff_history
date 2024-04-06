@@ -26,6 +26,68 @@ ACTION_TOKEN = special_tokens_interaction_history["action"]
 OBSERVATION_TOKEN = special_tokens_interaction_history["observation"]
 
 
+class TrajectoryTokenizer:
+    def __init__(self, tokenizer, nethack_anchor_every=1,
+                 nethack_obs_start_token_id=30001,
+                 nethack_obs_end_token_id=30002,
+                 nethack_obs_start_diff_token_id=30004, ):
+        self.nethack_obs_start_token_id = nethack_obs_start_token_id
+        self.nethack_obs_end_token_id = nethack_obs_end_token_id
+        self.nethack_obs_start_diff_token_id = nethack_obs_start_diff_token_id
+        self.nethack_anchor_every = nethack_anchor_every
+
+        self.tokenizer = tokenizer
+
+        self._observations = None
+        self._actions = None
+        self._token_buffer = None
+        self._anchor_obs = None
+
+        self.reset()
+
+    def append_observation(self, observation):
+        obs = observation.strip()
+        print("\033[92m <>" + obs + "</>\033[0m")
+        i = len(self._observations)
+        self._observations.append(obs)
+        assert len(self._observations) == len(self._actions) + 1
+
+        obs = obs.strip()
+        if i % self.nethack_anchor_every == 0:
+            # Anchor the observation (encode full observation)
+            self._anchor_obs = obs
+            tokens_obs = self.tokenizer.encode(obs, add_special_tokens=False)
+            tokens_obs = [self.nethack_obs_start_token_id] + tokens_obs
+        else:
+            diff_obs = self.diff_strings(self._anchor_obs, obs) # todo: implement diff_strings
+            tokens_obs = self.tokenizer.encode(diff_obs)
+            tokens_obs = [self.nethack_obs_start_diff_token_id] + tokens_obs
+
+        tokens_obs += [self.nethack_obs_end_token_id]
+
+        self._token_buffer.extend(tokens_obs)
+
+    def append_action(self, action):
+        # print in red
+        action = action.strip()
+        print("\033[91m <>" + action + "</>\033[0m")
+        action = action.strip()
+        self._actions.append(action)
+        assert len(self._observations) == len(self._actions)
+        tokens_action = self.tokenizer.encode(action, add_special_tokens=False)
+
+        self._token_buffer.extend(tokens_action)
+
+    def reset(self):
+        self._observations = []
+        self._actions = []
+        self._token_buffer = [self.tokenizer.bos_token_id]
+        self._anchor_obs = None
+
+    def return_tokenized(self):
+        assert self._token_buffer[-1] == self.nethack_obs_end_token_id
+        return self._token_buffer
+
 def history_rollout(
     model,
     tokenizer,
@@ -81,6 +143,8 @@ def history_rollout(
             num_return_sequences=1,
         )
 
+        # print in blue
+        print("\033[94m <>" + prompt + "</>\033[0m")
         tokenized_prompt = tokenizer(
             prompt, padding="longest", return_tensors="pt", add_special_tokens=False
         )
@@ -127,10 +191,14 @@ def history_rollout(
 
     obs = env.reset()
 
+    trajectory_tokenizer = TrajectoryTokenizer(tokenizer, nethack_anchor_every=1)
+
     query = obs["prompt"]
     ctx = query[:].strip() + "\n"
     ctx_idx = 0
     prompt_history = [obs["prompt"]]
+
+    trajectory_tokenizer.append_observation(ctx)
 
     imagined_obs = []
     gt_obs = []
@@ -179,6 +247,7 @@ def history_rollout(
 
         ctx += "\n%s" % (interleaving_token)
 
+        query_tokens = trajectory_tokenizer.return_tokenized()
         actions, i_obs, decoded_output = _query_model(ctx, unroll_length=1)
 
         imagined_obs += [i_obs]
@@ -186,6 +255,8 @@ def history_rollout(
         for action in actions:
             try:
                 obs, reward, done, info = env.step(action)
+                trajectory_tokenizer.append_action(action)
+                trajectory_tokenizer.append_observation(obs["prompt"])
 
                 gt_obs += [deepcopy(obs["prompt"])]
                 all_actions += [action]
@@ -193,13 +264,14 @@ def history_rollout(
 
                 sobs = pretty_print_ttyrec(obs)
                 all_obs += [sobs]
-            except:
+            except Exception as e:
+                print("Exception here 1:", e)
                 done = True
                 try:
                     env.env._quit_game(env.last_observation, done)
                     env.env._quit_game(env.last_observation, done)
-                except:
-                    pass
+                except Exception as e:
+                    print("Exception here 2:", e)
 
         if max(len(all_actions) - history, 0) != 0:
             ctx_idx += 1
