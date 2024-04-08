@@ -1,3 +1,13 @@
+import pathlib
+import os, sys
+
+# print('sys.path:', sys.path)
+# todo: this can be done better!
+basic_path = sys.path[0][:-19]
+sys.path.insert(0, basic_path)
+
+print("====================")
+
 import argparse
 import json
 import os
@@ -205,6 +215,8 @@ def history_rollout(
         for action in actions:
             try:
                 obs, reward, done, info = env.step(action)
+                # print in green
+                print("\033[92m <>" + obs["prompt"] + "</>\033[0m")
                 trajectory_tokenizer.append_action(action)
                 trajectory_tokenizer.append_observation(obs["prompt"])
 
@@ -274,6 +286,7 @@ def main():
     # fill in later
     parser.add_argument("--ttyrec_save_dir", default=None)
     parser.add_argument("--observation_save_dir", default=None)
+    parser.add_argument("--config", default='config_file')
 
     # parse args
     args = parser.parse_args()
@@ -332,7 +345,7 @@ def main():
         device = 'auto'
 
     model, tokenizer = load_hf_lm_and_tokenizer(
-        model_name_or_path=args.model_name_or_path,
+        model_name_or_path="/checkpoints/BIS-466/streaming_params_3000",#args.model_name_or_path,
         use_fast_tokenizer=(
             "bert" in args.model_name_or_path or "LED" in args.model_name_or_path
         ),
