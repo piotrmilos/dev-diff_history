@@ -6,7 +6,9 @@ import os, sys
 basic_path = sys.path[0][:-19]
 sys.path.insert(0, basic_path)
 
-print("====================")
+
+print("====================", file=sys.stderr)
+
 
 import argparse
 import json
@@ -55,7 +57,7 @@ class TrajectoryTokenizer:
 
     def append_observation(self, observation):
         obs = observation.strip()
-        # print("\033[92m <>" + obs + "</>\033[0m")
+        print("\033[92m <>" + obs + "</>\033[0m", file=sys.stderr)
         i = len(self._observations)
         self._observations.append(obs)
         assert len(self._observations) == len(self._actions) + 1
@@ -78,7 +80,7 @@ class TrajectoryTokenizer:
     def append_action(self, action):
         # print in red
         action = action.strip()
-        print("\033[91m <>" + action + "</>\033[0m")
+        print("\033[91m <>" + action + "</>\033[0m", file=sys.stderr)
         action = action.strip()
         self._actions.append(action)
         assert len(self._observations) == len(self._actions)
@@ -206,6 +208,7 @@ def history_rollout(
     gt_obs = []
     all_obs = []
     all_actions = []
+    print("Entering the loop", file=sys.stderr)
     while not done:
         query_tokens = trajectory_tokenizer.return_tokenized()
         actions, i_obs = _query_model(tokens=query_tokens, unroll_length=1)
@@ -216,7 +219,6 @@ def history_rollout(
             try:
                 obs, reward, done, info = env.step(action)
                 # print in green
-                print("\033[92m <>" + obs["prompt"] + "</>\033[0m")
                 trajectory_tokenizer.append_action(action)
                 trajectory_tokenizer.append_observation(obs["prompt"])
 

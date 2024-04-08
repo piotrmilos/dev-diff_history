@@ -5,6 +5,8 @@ You should run nethack_experiments/fulltext_history_rollout_pm.py --model_name_o
 
 You can download checkpoints from gs://focused-llama/bison-pl/BIS-466/pytorch
 
+Athena setup is here: mrunner --config mrunner_configs.yaml --context athena_eval_sf run configs/config-eval-base.py
+
 # `diff` History for Neural Language Agents
 
 This is the official code release accompanying the paper [***`diff` History for Neural Language Agents***](https://upiterbarg.github.io/projects) by **Piterbarg**, **Pinto**, and **Fergus** (arXiv preprint, 2024).
